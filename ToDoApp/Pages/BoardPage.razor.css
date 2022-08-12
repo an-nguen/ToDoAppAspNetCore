@@ -42,6 +42,7 @@
     background-color: #fdfdfd;
     flex-direction: column;
     padding: 8px;
+    margin-bottom: 4px;
     border-radius: 4px;
     box-shadow: var(--mud-elevation-1);
 }
