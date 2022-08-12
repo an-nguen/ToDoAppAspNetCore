@@ -1,0 +1,42 @@
+@using ToDoApp.Data
+@inject BoardService BoardService
+@inject ISnackbar Snackbar
+
+<MudDialog >
+    <DialogContent>
+        <MudTextField Required Variant="Variant.Outlined" Label="Имя доски" @bind-Value="BoardName"></MudTextField>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateBoard">
+            Добавить
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    
+    private string? BoardName { get; set; }
+
+    private async void CreateBoard()
+    {
+        if (string.IsNullOrEmpty(BoardName))
+        {
+            Snackbar.Add("Не указано название доски задач", Severity.Error);
+            return;
+        }
+        try
+        {
+            await BoardService.CreateBoard(BoardName);
+            Snackbar.Add("Доска задач успешно создана", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add("Ошибка - создание доски задач", Severity.Error);
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+}

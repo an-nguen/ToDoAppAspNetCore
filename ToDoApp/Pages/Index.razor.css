@@ -1,0 +1,13 @@
+.list-item {
+    padding: 0 16px;
+    height: 58px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+}
+
+.list-item .label {
+    font-size: 18px;
+    font-weight: 400;
+}

@@ -1,0 +1,35 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_customTheme"/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<MudLayout>
+    <MudAppBar Color="Color.Primary" Elevation="0">
+        <a href="">
+            <MudText Typo="Typo.h5" Class="m1-3">Tasks</MudText>
+        </a>
+        <MudSpacer/>
+    </MudAppBar>
+    <MudMainContent Class="px-8 mt-4">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+
+    readonly MudTheme _customTheme = new()
+    {
+        Palette = new Palette
+        {
+            Primary = Colors.Orange.Lighten2,
+            Secondary = Colors.Green.Lighten4,
+        },
+        PaletteDark = new Palette
+        {
+            Primary = Colors.Orange.Darken2,
+            Secondary = Colors.Orange.Darken4
+        },
+    };
+
+}

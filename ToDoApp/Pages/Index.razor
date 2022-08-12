@@ -1,0 +1,78 @@
+﻿@page "/"
+@using ToDoApp.Data
+@using ToDoApp.Domains
+@inject NavigationManager NavigationManager
+@inject BoardService BoardService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Главная страница</PageTitle>
+<div class="d-flex align-center justify-space-between flex-row">
+    <MudText Typo="Typo.h5">Список досок с задачами</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateBoardDialog">Добавить</MudButton>
+</div>
+<MudPaper>
+    @if (_boards.Count == 0)
+    {
+        <div class="list-item">Здесь нет досок задач</div>
+    }
+    else
+    {
+        @foreach (var board in _boards)
+        {
+            <div class="list-item gap-1" Text="@board.Name" OnClick="() => OpenBoard(board)">
+                <span class="label">@board.Name</span>
+                <MudSpacer></MudSpacer>
+                <MudIconButton Icon="@Icons.Filled.Edit" OnClick="() => OpenBoard(board)"></MudIconButton>
+                <MudIconButton Icon="@Icons.Filled.Delete" OnClick="() => RemoveBoard(board)"></MudIconButton>
+            </div>
+        }
+    }
+</MudPaper>
+
+
+@code {
+    private List<Board> _boards = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBoards();
+    }
+
+    private async Task LoadBoards()
+    {
+        _boards = await BoardService.FindAll();
+    }
+
+    private async Task OpenCreateBoardDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var dialog = DialogService.Show<CreateBoardComponent>("Добавление доски", options);
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        {
+            await LoadBoards();
+        }
+    }   
+
+    private void OpenBoard(Board board)
+    {
+        NavigationManager.NavigateTo($"board/{board.BoardId}");
+    }
+
+    private async Task RemoveBoard(Board board)
+    {
+        try
+        {
+            await BoardService.DeleteBoard(board.BoardId);
+            Snackbar.Add("Доска задач удалена!", Severity.Success);
+            _boards = await BoardService.FindAll();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add("Ошибка при удалении доски задач", Severity.Error);
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+}

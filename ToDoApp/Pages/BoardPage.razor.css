@@ -1,0 +1,57 @@
+.board-space {
+    display: flex;
+    align-items: start;
+    flex-direction: row;
+    gap: 8px;
+    height: 80vh;
+}
+
+.add-task-list-blk {
+    display: flex;
+    width: 320px;
+    height: 32px;
+    border-radius: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #727272;
+    transition: all ease-out 150ms;
+    padding: 16px;
+}
+
+.add-task-list-blk:not(.new):hover {
+    background-color: #ededed;
+    cursor: pointer;
+}
+
+.add-task-list-blk.new {
+    height: 140px;
+    align-items: start;
+    flex-direction: column;
+}
+
+.task-list-header {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: row;
+    align-items: center;
+}
+
+.task-card {
+    display: flex;
+    background-color: #fdfdfd;
+    flex-direction: column;
+    padding: 8px;
+    border-radius: 4px;
+    box-shadow: var(--mud-elevation-1);
+}
+
+.draggable {
+    touch-action: none;
+    user-select: none;
+}
+
+.task-list-container {
+    width: 320px;
+    height: 100%;
+}

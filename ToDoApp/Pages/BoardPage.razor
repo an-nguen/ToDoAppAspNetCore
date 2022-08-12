@@ -1,0 +1,243 @@
+@page "/board/{BoardId:int}"
+@using ToDoApp.Data
+@using ToDoApp.Domains
+@inject BoardService BoardService
+@inject TaskListService TaskListService
+@inject TaskCardService TaskCardService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+@if (_board == null)
+{
+    <div>Доска с ID = @BoardId не найдена</div>
+}
+else
+{
+    <MudText Class="mb-4" Typo="Typo.h5">Доска "@_board.Name"</MudText>
+    <div class="board-space">
+        @foreach (var taskList in TaskLists)
+        {
+            <div class="task-list-container" data-task-list-id="@taskList.TaskListId">
+                <MudCard >
+                    <MudCardHeader>
+                        <div class="task-list-header">
+                            <MudText>@taskList.Label</MudText>
+                            <MudSpacer/>
+                            <MudMenu Icon="@Icons.Filled.Menu" Dense>
+                                <MudMenuItem OnClick="() => RemoveTaskList(taskList)">Удалить</MudMenuItem>
+                            </MudMenu>
+                        </div>
+                    </MudCardHeader>
+                    <MudCardContent Class="cards" data-task-list-id="@taskList.TaskListId">
+
+                        @if (taskList.Cards is {Count: > 0 })
+                        {
+                            @foreach (var taskCard in taskList.Cards)
+                            {
+                                <div class="task-card draggable" data-task-card-id="@taskCard.TaskCardId">
+                                    <span class="task-card-label">@taskCard.Label</span>
+                                    <div class="task-card-actions">
+                                        <MudMenu Icon="@Icons.Filled.Edit" Dense>
+                                            <MudMenuItem OnClick="() => RemoveTaskCard(taskCard, taskList)">Удалить</MudMenuItem>
+                                        </MudMenu>
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        @if (_newTaskCard && _selectedTaskListId == taskList.TaskListId)
+                        {
+                            <MudCard>
+                                <MudCardContent>
+                                    <MudTextField Required Variant="Variant.Outlined" Label="Введите заголовок" Lines="5" @bind-Value="TaskCardLabel"></MudTextField>
+                                </MudCardContent>
+                                <MudCardActions>
+                                    <MudIconButton Icon="@Icons.Filled.Add" Color="Color.Primary" OnClick="() => AddTaskCard(taskList)"></MudIconButton>
+                                    <MudIconButton Icon="@Icons.Filled.Close" Color="Color.Error"
+                                                   OnClick="CloseTaskCardEditor">
+                                    </MudIconButton>
+                                </MudCardActions>
+                            </MudCard>
+                        }
+                    </MudCardContent>
+                    <MudCardActions>
+                        @if (!(_newTaskCard && _selectedTaskListId == taskList.TaskListId))
+                        {
+                            <MudButton Variant="Variant.Text" StartIcon="@Icons.Filled.Add"
+                                       OnClick="() => OpenTaskCardEditor(taskList)">
+                                Добавить карточку
+                            </MudButton>
+                        }
+                    </MudCardActions>
+                </MudCard>
+
+            </div>
+        }
+        <div class="add-task-list-blk @(_newTaskList ? "new" : "")" @onclick="() => _newTaskList = true">
+            @if (!_newTaskList)
+            {
+                <MudIcon Icon="@Icons.Filled.Add"></MudIcon>
+                <MudText>Добавить список задач</MudText>
+            }
+            else
+            {
+                <MudTextField Required Class="flex-initial mb-2" Variant="Variant.Outlined" Label="Название списка задач" @bind-Value="TaskListLabel"></MudTextField>
+                <div class="d-flex justify-end flex-1 flex-row gap-1 align-center">
+                    <MudButton Color="Color.Primary" StartIcon="@Icons.Filled.Add"
+                               Variant="Variant.Filled"
+                               OnClick="CreateTaskList">
+                        Добавить
+                    </MudButton>
+                    <MudIconButton Color="Color.Error" Icon="@Icons.Filled.Close"
+                                   OnClick="() => _newTaskList = false">
+                    </MudIconButton>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public int BoardId { get; set; }
+
+    private bool _newTaskList;
+    private string? TaskListLabel { get; set; }
+
+    private bool _newTaskCard;
+    private int _selectedTaskListId;
+    private string? TaskCardLabel { get; set; }
+
+    private List<TaskList> TaskLists { get; set; } = new();
+
+    private Board? _board;
+    
+    private DotNetObjectReference<BoardPage>? objRef;
+    private IJSObjectReference module;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var found = await BoardService.FindById(BoardId);
+        if (found != null)
+        {
+            _board = found;
+            await LoadTaskLists();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            module = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./js/dragdrop.js");
+            
+            await module.InvokeVoidAsync("enableDragDrop", objRef);
+        }
+    }
+
+    private async Task LoadTaskLists()
+    {
+        TaskLists = await TaskListService.LoadTaskList(_board!);
+    }
+
+    private async Task CreateTaskList()
+    {
+        if (string.IsNullOrEmpty(TaskListLabel))
+        {
+            Snackbar.Add("Не указано название колонки", Severity.Error);
+            return;
+        }
+        try
+        {
+            await TaskListService.CreateTaskList(TaskListLabel, _board!);
+            TaskListLabel = "";
+            await LoadTaskLists();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add("Ошибка при добавлении колонки", Severity.Error);
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+    private async Task AddTaskCard(TaskList taskList)
+    {
+        if (string.IsNullOrEmpty(TaskCardLabel))
+        {
+            Snackbar.Add("Не указано название карточки", Severity.Error);
+            return;
+        }
+        try
+        {
+            await TaskCardService.CreateTaskCard(TaskCardLabel, taskList);
+            TaskCardLabel = "";
+            await LoadTaskLists();
+            CloseTaskCardEditor();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add("Ошибка при добавлении карточки", Severity.Error);
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleTaskCardMove(int taskCardId, int taskListId)
+    {
+        try
+        {
+            await TaskCardService.MoveTaskCard(taskCardId, taskListId);
+            await LoadTaskLists();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add("Ошибка при перемещении карточки", Severity.Error);
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+    private void OpenTaskCardEditor(TaskList taskList)
+    {
+        _newTaskCard = true;
+        _selectedTaskListId = taskList.TaskListId;
+        TaskCardLabel = "";
+    }
+
+    private void CloseTaskCardEditor()
+    {
+        _newTaskCard = false;
+        _selectedTaskListId = 0;
+    }
+
+    private async Task RemoveTaskList(TaskList taskList)
+    {
+        try
+        {
+            await TaskListService.RemoveTaskList(taskList.TaskListId);
+            await LoadTaskLists();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add("Ошибка при удалении колонки", Severity.Error);
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+    private async Task RemoveTaskCard(TaskCard card, TaskList taskList)
+    {
+        try
+        {
+            await TaskCardService.RemoveTaskCard(card.TaskCardId);
+            await LoadTaskLists();
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add("Ошибка при удалении карточки", Severity.Error);
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+}
